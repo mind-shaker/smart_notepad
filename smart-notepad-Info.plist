@@ -2,7 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSMicrophoneInjectionUsageDescription</key>
-	<string>"This app needs access to your microphone to record your voice."</string>
+    <!-- Дозвіл на мікрофон -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Потрібен доступ до мікрофону для запису голосових нотаток</string>
+    
+    <!-- Дозвіл на розпізнавання мови -->
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Потрібен доступ для розпізнавання вашого голосу та конвертації в текст</string>
 </dict>
 </plist>

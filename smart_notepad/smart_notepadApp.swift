@@ -11,50 +11,66 @@ import SwiftUI
 struct SmartNotepadApp: App {
     
     @StateObject private var speechManager = SpeechManager()
-    @StateObject private var notesManager = NotesManager()
     
     var body: some Scene {
-        // Це робить додаток менюбарним (тільки іконка вгорі праворуч)
         MenuBarExtra("Smart Notepad", systemImage: "mic") {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Розумний блокнот")
                     .font(.headline)
                     .padding(.top, 8)
                 
-                if speechManager.recognitionError != nil {
-                    Text(speechManager.recognitionError ?? "")
+                if let error = speechManager.recognitionError {
+                    Text(error)
                         .foregroundColor(.red)
                         .font(.caption)
+                        .lineLimit(3)
                 }
                 
-                Text(speechManager.isRecording ? "Запис..." : "Готовий до диктування")
+                Text(speechManager.isRecording ? "🔴 Запис..." : "🟢 Готовий до диктування")
                     .foregroundColor(speechManager.isRecording ? .red : .green)
+                    .font(.subheadline)
                 
-                Text(speechManager.transcribedText.isEmpty ? "Натисни для диктування" : speechManager.transcribedText)
-                    .font(.body)
-                    .lineLimit(5)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
+                ScrollView {
+                    Text(speechManager.transcribedText.isEmpty ? "Натисни для диктування" : speechManager.transcribedText)
+                        .font(.body)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal)
+                }
+                .frame(minHeight: 80, maxHeight: 150)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
                 
-                HStack {
-                    Button(speechManager.isRecording ? "Зупинити" : "Почати диктувати") {
+                HStack(spacing: 10) {
+                    Button(speechManager.isRecording ? "⏹ Зупинити" : "🎤 Почати") {
                         speechManager.toggleRecording()
                     }
+                    .buttonStyle(.borderedProminent)
+                    .tint(speechManager.isRecording ? .red : .blue)
                     .keyboardShortcut(speechManager.isRecording ? .cancelAction : .defaultAction)
                     
                     if !speechManager.transcribedText.isEmpty && !speechManager.isRecording {
-                        Button("Зберегти в Notes") {
-                            notesManager.saveToNotes(content: speechManager.transcribedText)
+                        Button("💾 Зберегти") {
+                            NotesManager.shared.saveToNotes(content: speechManager.transcribedText)
                             speechManager.transcribedText = ""
                         }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
                     }
                 }
-                .padding(.bottom, 8)
+                .padding(.vertical, 8)
+                
+                Divider()
+                
+                Button("Вийти") {
+                    NSApplication.shared.terminate(nil)
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(.red)
+                .font(.caption)
             }
             .padding()
-            .frame(minWidth: 300)
+            .frame(minWidth: 320, maxWidth: 400)
         }
-        // Стиль вікна менюбарного меню
         .menuBarExtraStyle(.window)
     }
 }
