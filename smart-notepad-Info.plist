@@ -2,12 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Дозвіл на мікрофон -->
-    <key>NSMicrophoneUsageDescription</key>
-    <string>Потрібен доступ до мікрофону для запису голосових нотаток</string>
-    
-    <!-- Дозвіл на розпізнавання мови -->
-    <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Потрібен доступ для розпізнавання вашого голосу та конвертації в текст</string>
+	<!-- Дозвіл на мікрофон -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Потрібен доступ до мікрофону для запису голосових нотаток</string>
+
+	<!-- Дозвіл на розпізнавання мови -->
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Потрібен доступ для розпізнавання вашого голосу та конвертації в текст</string>
+
+	<!-- Дозвіл на автоматизацію інших додатків (КРИТИЧНО для Notes!) -->
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Програма потребує надсилати команди іншим додаткам (наприклад, Notes) для роботи функцій автоматизації та інтеграції.</string>
+
+	<!-- Інші ключі, які вже були у тебе (якщо є) — залишай -->
 </dict>
 </plist>

@@ -254,8 +254,8 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4QYA55ZHBY;
-				ENABLE_APP_SANDBOX = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -263,8 +263,10 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Програма потребує надсилати команди іншим додаткам (наприклад, Notes) для роботи функцій автоматизації та інтеграції.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "\"This app needs speech recognition to convert your voice to text.\"";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Потрібен доступ до мікрофону для запису голосових нотаток";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Потрібен доступ для розпізнавання вашого голосу та конвертації в текст";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -291,8 +293,8 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4QYA55ZHBY;
-				ENABLE_APP_SANDBOX = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -300,8 +302,10 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "";
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "Програма потребує надсилати команди іншим додаткам (наприклад, Notes) для роботи функцій автоматизації та інтеграції.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "\"This app needs speech recognition to convert your voice to text.\"";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Потрібен доступ до мікрофону для запису голосових нотаток";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Потрібен доступ для розпізнавання вашого голосу та конвертації в текст";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

@@ -1,91 +1,140 @@
 import Foundation
 import AppKit
+import UserNotifications
 
 class NotesManager {
     
     static let shared = NotesManager()
     
-    private init() {} // Приватний ініціалізатор для singleton
+    private init() {
+        // Запит дозволу на сповіщення
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+            if granted {
+                print("✅ Дозвіл на сповіщення отримано")
+            }
+        }
+    }
     
     func saveToNotes(content: String) {
-        // Екрануємо спеціальні символи для AppleScript
-        let escapedContent = escapeForAppleScript(content)
+        print("🔵 saveToNotes викликано з контентом довжиною: \(content.count) символів")
         
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd.MM.yyyy HH:mm"
         let dateString = dateFormatter.string(from: Date())
         
-        // Спершу пробуємо зберегти в iCloud
-        let iCloudScript = """
+        let title = "Голосова нотатка \(dateString)"
+        
+        // Спробуємо найпростіший варіант — просто текст без HTML
+        let simpleContent = "\(title)\n\n\(content)"
+        let escapedContent = simpleContent.replacingOccurrences(of: "\\", with: "\\\\")
+                                          .replacingOccurrences(of: "\"", with: "\\\"")
+                                          .replacingOccurrences(of: "\n", with: "\\n")
+        
+        print("📝 Escaped content: \(escapedContent.prefix(100))...")
+        
+        // Додамо інформацію про оточення для діагностики
+        let isSandboxed = ProcessInfo.processInfo.environment["APP_SANDBOX_CONTAINER_ID"] != nil
+        print("🔍 Environment Check:")
+        print("   Is Sandboxed: \(isSandboxed)")
+        print("   Process ID: \(ProcessInfo.processInfo.processIdentifier)")
+        
+        // Спроба 1: Найпростіший можливий скрипт
+        let scriptSource = """
         tell application "Notes"
             activate
-            tell account "iCloud"
-                tell folder "Notes"
-                    make new note with properties {name:"Голосова нотатка \(dateString)", body:"\(escapedContent)"}
-                end tell
-            end tell
+            try
+                make new note with properties {body:"\(escapedContent)"}
+                return "Success"
+            on error errMsg number errNum
+                return "Error: " & errMsg & " (" & errNum & ")"
+            end try
         end tell
         """
         
-        if executeScript(iCloudScript) {
-            print("✅ Збережено в iCloud Notes")
-            showNotification(title: "Збережено", message: "Нотатку додано в Notes (iCloud)")
-            return
-        }
-        
-        // Якщо не вдалося - пробуємо локальний акаунт
-        print("⚠️ iCloud не спрацював, пробуємо локальний акаунт...")
-        let localScript = """
-        tell application "Notes"
-            activate
-            make new note with properties {name:"Голосова нотатка \(dateString)", body:"\(escapedContent)"}
-        end tell
-        """
-        
-        if executeScript(localScript) {
-            print("✅ Збережено в локальні Notes")
-            showNotification(title: "Збережено", message: "Нотатку додано в Notes (локально)")
-        } else {
-            print("❌ Не вдалося зберегти нотатку")
-            showNotification(title: "Помилка", message: "Не вдалося зберегти в Notes. Перевірте дозволи.")
-        }
-    }
-    
-    private func escapeForAppleScript(_ text: String) -> String {
-        return text
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .replacingOccurrences(of: "\n", with: "\\n")
-            .replacingOccurrences(of: "\r", with: "\\r")
-    }
-    
-    private func executeScript(_ source: String) -> Bool {
-        guard let script = NSAppleScript(source: source) else {
-            print("❌ Помилка створення AppleScript")
-            return false
-        }
+        print("📜 AppleScript (with try/catch):\n\(scriptSource)")
+        print("🚀 Виконую NSAppleScript...")
         
         var error: NSDictionary?
-        let output = script.executeAndReturnError(&error)
+        let script = NSAppleScript(source: scriptSource)
+        let result = script?.executeAndReturnError(&error)
         
-        if let error = error {
-            print("❌ AppleScript помилка: \(error)")
-            if let message = error["NSAppleScriptErrorMessage"] as? String {
-                print("   Деталі: \(message)")
+        if let err = error {
+            print("❌ NSAppleScript помилка (System level):")
+            print("   Error dict: \(err)")
+            if let errMsg = err["NSAppleScriptErrorMessage"] as? String {
+                print("   Повідомлення: \(errMsg)")
             }
-            return false
+            if let errNum = err["NSAppleScriptErrorNumber"] as? Int {
+                print("   Код помилки: \(errNum)")
+            }
+            
+            // Спроба 2: Через osascript з детальним логуванням
+            print("🔄 Пробую через osascript...")
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            process.arguments = ["-e", scriptSource]
+            
+            let outputPipe = Pipe()
+            let errorPipe = Pipe()
+            process.standardOutput = outputPipe
+            process.standardError = errorPipe
+            
+            do {
+                try process.run()
+                process.waitUntilExit()
+                
+                let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+                let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                
+                let output = String(data: outputData, encoding: .utf8) ?? ""
+                let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+                
+                if !output.isEmpty {
+                    print("📤 osascript output: \(output)")
+                }
+                
+                if !errorOutput.isEmpty {
+                    print("❌ osascript error: \(errorOutput)")
+                    showNotification(title: "Помилка", message: "AppleScript error: \(errorOutput)")
+                } else if output.contains("Error:") {
+                    print("❌ osascript script-level error: \(output)")
+                    showNotification(title: "Помилка", message: "Script Error: \(output)")
+                } else {
+                    print("✅ osascript завершився без помилок (exit code: \(process.terminationStatus))")
+                    if process.terminationStatus == 0 {
+                        showNotification(title: "Збережено", message: "Нотатка має бути в Notes")
+                    } else {
+                        showNotification(title: "Увага", message: "Скрипт виконано, код \(process.terminationStatus)")
+                    }
+                }
+            } catch {
+                print("❌ Не вдалося запустити osascript: \(error)")
+                showNotification(title: "Помилка", message: "Системна помилка: \(error.localizedDescription)")
+            }
+        } else {
+            let resultStr = result?.stringValue ?? "Unknown"
+            print("✅ NSAppleScript виконано! Результат: \(resultStr)")
+            
+            if resultStr.contains("Error:") {
+                print("❌ Але повернуто помилку скрипта: \(resultStr)")
+                showNotification(title: "Помилка в скрипті", message: resultStr)
+            } else {
+                showNotification(title: "Збережено", message: "Нотатка додана в Notes")
+            }
         }
-        
-        print("✅ AppleScript виконано успішно: \(output)")
-        return true
     }
     
     private func showNotification(title: String, message: String) {
-        let notification = NSUserNotification()
-        notification.title = title
-        notification.informativeText = message
-        notification.soundName = NSUserNotificationDefaultSoundName
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = message
+        content.sound = .default
         
-        NSUserNotificationCenter.default.deliver(notification)
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Помилка надсилання сповіщення: \(error)")
+            }
+        }
     }
 }

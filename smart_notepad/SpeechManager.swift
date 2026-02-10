@@ -112,103 +112,101 @@ class SpeechManager: ObservableObject {
             return
         }
         
-        // Якщо вже йде запис - спочатку зупиняємо
-        if audioEngine.isRunning {
-            print("⚠️ AudioEngine вже працює, перезапускаємо...")
-            stopRecording()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                self?.startRecording()
-            }
-            return
-        }
+        // Переконаємося, що все чисте перед початком
+        resetAudioEngine()
         
         transcribedText = ""
         recognitionError = nil
         
         do {
-            // Створюємо запит
             recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
             guard let recognitionRequest else {
-                recognitionError = "Не вдалося створити запит розпізнавання"
-                print("❌ recognitionRequest = nil")
+                recognitionError = "Не вдалося створити запит"
                 return
             }
             
             recognitionRequest.shouldReportPartialResults = true
-            recognitionRequest.requiresOnDeviceRecognition = false
             
-            print("🎯 Створюємо recognitionTask...")
+            // Спробуємо увімкнути on-device розпізнавання, якщо воно доступне
+            if recognizer.supportsOnDeviceRecognition {
+                recognitionRequest.requiresOnDeviceRecognition = true
+            }
+            
             recognitionTask = recognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
-                guard let self else { return }
+                guard let self = self else { return }
                 
                 Task { @MainActor in
-                    if let result {
+                    if let result = result {
                         self.transcribedText = result.bestTranscription.formattedString
-                        let preview = self.transcribedText.prefix(50)
-                        print("📝 Розпізнано (\(self.transcribedText.count) символів): \(preview)...")
                     }
                     
-                    if let error {
-                        print("❌ Помилка розпізнавання: \(error.localizedDescription)")
-                        self.recognitionError = "Помилка: \(error.localizedDescription)"
+                    if let error = error {
+                        let nsError = error as NSError
+                        // Error 216 (kAFAssistantErrorDomain) часто виникає при спробі зупинити активну сесію
+                        // Якщо ми вже маємо фінальний текст, ігноруємо цю помилку для користувача
+                        if nsError.domain == "kAFAssistantErrorDomain" && nsError.code == 216 {
+                            print("⚠️ Отримано kAFAssistantErrorDomain 216 (це часто буває при завершенні)")
+                        } else {
+                            print("❌ Помилка розпізнавання: \(error.localizedDescription)")
+                            self.recognitionError = "Помилка: \(error.localizedDescription)"
+                        }
+                        self.forceStopAndCleanup()
                     }
                     
-                    if error != nil || result?.isFinal == true {
-                        print("⏹️ Завершуємо розпізнавання (помилка або фінальний результат)")
-                        self.stopRecording()
+                    if result?.isFinal == true {
+                        print("⏹️ Сесія завершена успішно")
+                        self.forceStopAndCleanup()
                     }
                 }
             }
             
-            // Підключаємо аудіо вхід
             let inputNode = audioEngine.inputNode
             let recordingFormat = inputNode.outputFormat(forBus: 0)
             
-            print("🎤 Аудіо формат: \(recordingFormat)")
-            print("   Sample Rate: \(recordingFormat.sampleRate)")
-            print("   Channels: \(recordingFormat.channelCount)")
-            
-            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak recognitionRequest] buffer, _ in
-                recognitionRequest?.append(buffer)
+            inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
+                self.recognitionRequest?.append(buffer)
             }
             
-            print("🔧 Підготовка audioEngine...")
             audioEngine.prepare()
-            
-            print("▶️ Запуск audioEngine...")
             try audioEngine.start()
             
             isRecording = true
-            print("✅✅✅ ЗАПИС АКТИВНИЙ! Говоріть українською...")
+            print("✅ Запис активовано")
             
         } catch {
-            print("❌ КРИТИЧНА ПОМИЛКА: \(error.localizedDescription)")
+            print("❌ Помилка запуску: \(error.localizedDescription)")
             recognitionError = "Не вдалося запустити запис: \(error.localizedDescription)"
-            stopRecording()
+            forceStopAndCleanup()
         }
     }
     
     func stopRecording() {
-        print("⏹️ Зупинка запису...")
-        
+        print("⏹️ Користувач зупинив запис")
+        // Просто припиняємо подачу аудіо, дозволяючи розпізнавачу надіслати фінальний результат
         if audioEngine.isRunning {
             audioEngine.stop()
             audioEngine.inputNode.removeTap(onBus: 0)
-            print("  🔇 AudioEngine зупинено")
         }
-        
         recognitionRequest?.endAudio()
+        isRecording = false
+    }
+    
+    private func resetAudioEngine() {
+        if audioEngine.isRunning {
+            audioEngine.stop()
+        }
+        audioEngine.inputNode.removeTap(onBus: 0)
         recognitionTask?.cancel()
-        
+        recognitionTask = nil
+        recognitionRequest = nil
+    }
+    
+    private func forceStopAndCleanup() {
+        audioEngine.stop()
+        audioEngine.inputNode.removeTap(onBus: 0)
         recognitionRequest = nil
         recognitionTask = nil
-        
         isRecording = false
-        print("✅ Запис ЗУПИНЕНО")
-        
-        if !transcribedText.isEmpty {
-            print("📄 Фінальний текст: \(transcribedText)")
-        }
     }
     
     nonisolated deinit {
